@@ -19,9 +19,10 @@ const upload = multer({
 app.use(cors());
 app.use(express.json());
 app.use('/temp', express.static('temp'));
+app.use('/assets', express.static('assets'));
 
 app.get('/', (req, res) => {
-  res.send('Brickyard Backend API');
+  res.sendFile('views/index.html', { root: '.' });
 });
 
 // Image generation endpoint

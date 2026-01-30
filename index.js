@@ -42,7 +42,7 @@ app.post('/api/generate-design', upload.single('image'), async (req, res) => {
     }
 
     // Call the image generation service
-    const result = await generateDesignImage(imageFile.buffer, prompt);
+    const result = await generateDesignImage(imageFile, prompt);
     console.log('Design generated:', prompt);
 
     res.json(result);

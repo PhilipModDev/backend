@@ -1,6 +1,8 @@
 /**
  * Renovate AI Image Generation Service
+ * 
  */
+import { supabase } from './Supabase.js';
 
 const RENOVATE_API_URL = 'https://api.tech.renovateai.app/public/v1/renovate';
 const IMGBB_API_URL = 'https://api.imgbb.com/1/upload';
@@ -8,28 +10,45 @@ const IMGBB_API_URL = 'https://api.imgbb.com/1/upload';
 /**
  * Upload image to imgbb and return public URL
  */
-async function uploadImage(imageBuffer) {
+async function uploadImage(imageFile) {
   if (!process.env.IMGBB_API_KEY) {
     throw new Error('IMGBB_API_KEY is not set in .env');
   }
 
-  const formData = new URLSearchParams();
-  formData.append('key', process.env.IMGBB_API_KEY);
-  formData.append('image', imageBuffer.toString('base64'));
+  const imageBuffer = imageFile.buffer;
+  const fileName = `${Date.now()}-${imageFile.originalname}`;
 
-  const response = await fetch(IMGBB_API_URL, {
-    method: 'POST',
-    body: formData
+  const {error, data, } = await supabase.storage
+  .from('Brickyard Images') // your bucket name
+  .upload(fileName, imageFile.buffer, {
+    contentType: 'image/jpeg',
+    upsert: false
   });
 
-  const data = await response.json();
-
-  if (!data.success) {
-    console.error('imgbb error:', data);
-    throw new Error(data.error?.message || 'Failed to upload image');
+  if (error) {
+    throw error;
   }
 
-  return data.data.url;
+  const { data: urlData } = supabase.storage
+  .from('Brickyard Images')
+  .getPublicUrl(data.path);
+
+  // const formData = new URLSearchParams();
+  // formData.append('key', process.env.IMGBB_API_KEY);
+  // formData.append('image', imageBuffer.toString('base64'));
+
+  // const response = await fetch(IMGBB_API_URL, {
+  //   method: 'POST',
+  //   body: formData
+  // });
+
+  // const data = await response.json();
+
+  // if (!data.success) {
+  //   console.error('imgbb error:', data);
+  //   throw new Error(data.error?.message || 'Failed to upload image');
+  // }
+  return urlData.publicUrl;
 }
 
 /**
@@ -45,10 +64,9 @@ async function downloadAsBase64(imageUrl) {
 /**
  * Generate a renovated design using Renovate AI
  */
-export async function generateDesignImage(imageBuffer, prompt) {
-  const imageUrl = await uploadImage(imageBuffer);
+export async function generateDesignImage(imageFile, prompt) {
+  const imageUrl = await uploadImage(imageFile);
 
-  
   console.log('Starting image generation');
   const response = await fetch(RENOVATE_API_URL, {
     method: 'POST',
